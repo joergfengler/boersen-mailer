@@ -58,7 +58,6 @@ def add():
     name = request.form.get("name", "").strip() or resolved["name"]
     items.append({
         "wkn": resolved["wkn"],
-        "isin": resolved["isin"],
         "symbol": resolved["symbol"],
         "name": name,
         "category": category,

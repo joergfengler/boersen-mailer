@@ -1,61 +1,90 @@
-"""WKN/ISIN-Hilfsfunktionen: WKN -> ISIN-Berechnung und Auflösung zu einem Yahoo-Finance-Ticker."""
+"""WKN-Hilfsfunktionen: Auflösung einer WKN zu einem Yahoo-Finance-Symbol samt Namen.
+
+Nutzt die freie OpenFIGI-API (idType ID_WERTPAPIER = WKN), um alle Handelsplätze
+einer Wertpapierkennnummer zu ermitteln - unabhängig vom Sitzland des Emittenten.
+Das ist nötig, weil viele an deutschen Börsen gehandelte Wertpapiere (US-Aktien,
+irische/luxemburgische ETFs, ...) keine deutsche ISIN haben und sich daher nicht
+aus der WKN herleiten lässt.
+"""
+import requests
 import yfinance as yf
 
+OPENFIGI_URL = "https://api.openfigi.com/v3/mapping"
 
-def isin_check_digit(isin11: str) -> int:
-    digits = ""
-    for ch in isin11:
-        if ch.isdigit():
-            digits += ch
-        else:
-            digits += str(10 + (ord(ch.upper()) - ord("A")))
-
-    total = 0
-    for i, d in enumerate(reversed([int(c) for c in digits])):
-        if i % 2 == 0:
-            doubled = d * 2
-            total += doubled - 9 if doubled > 9 else doubled
-        else:
-            total += d
-    return (10 - (total % 10)) % 10
-
-
-def wkn_to_isin(wkn: str, country: str = "DE") -> str:
-    nsin = wkn.strip().upper().zfill(9)
-    base = country + nsin
-    return base + str(isin_check_digit(base))
+# Bloomberg-Exchange-Codes deutscher Handelsplätze -> Yahoo-Finance-Suffix,
+# in Prioritätsreihenfolge (liquidester/gängigster Handelsplatz zuerst).
+GERMAN_EXCHANGES = [
+    ("GY", "DE"),  # Xetra
+    ("GF", "F"),   # Frankfurt (Parkett)
+    ("GD", "DU"),  # Düsseldorf
+    ("GS", "SG"),  # Stuttgart
+    ("GM", "MU"),  # München
+    ("GB", "BE"),  # Berlin
+    ("GH", "HM"),  # Hamburg
+    ("GZ", "HA"),  # Hannover
+]
 
 
 class ResolveError(Exception):
     pass
 
 
-def resolve_wkn(wkn: str) -> dict:
-    """Ermittelt zu einer WKN das passende Yahoo-Finance-Symbol samt Namen.
+def _openfigi_candidates(wkn: str) -> list:
+    try:
+        resp = requests.post(
+            OPENFIGI_URL,
+            json=[{"idType": "ID_WERTPAPIER", "idValue": wkn}],
+            headers={"Content-Type": "application/json"},
+            timeout=15,
+        )
+        resp.raise_for_status()
+        result = resp.json()[0]
+    except Exception as e:
+        raise ResolveError(f"Abfrage bei OpenFIGI fehlgeschlagen: {e}") from e
 
-    Wandelt die WKN zunächst in eine deutsche ISIN um (DE + WKN + Prüfziffer)
-    und sucht darüber bei Yahoo Finance. Funktioniert nur für in Deutschland
-    notierte Wertpapiere.
+    if "error" in result:
+        return []
+    return result.get("data", [])
+
+
+def _fetch_name(symbol: str, fallback: str) -> str:
+    try:
+        info = yf.Ticker(symbol).info
+        name = info.get("longName") or info.get("shortName")
+        if name:
+            return name
+    except Exception:
+        pass
+    return fallback
+
+
+def resolve_wkn(wkn: str) -> dict:
+    """Ermittelt zu einer WKN das an einem deutschen Handelsplatz gehandelte
+    Yahoo-Finance-Symbol samt Namen - unabhängig davon, ob das Wertpapier
+    selbst eine deutsche ISIN hat.
     """
     wkn = wkn.strip().upper()
     if not wkn:
         raise ResolveError("WKN darf nicht leer sein.")
 
-    isin = wkn_to_isin(wkn)
-    try:
-        search = yf.Search(isin, max_results=5)
-        quotes = search.quotes
-    except Exception as e:
-        raise ResolveError(f"Suche fehlgeschlagen: {e}") from e
+    candidates = {c.get("exchCode"): c for c in _openfigi_candidates(wkn)}
 
-    if not quotes:
-        raise ResolveError(
-            f"Keine Yahoo-Finance-Daten zur WKN {wkn} (ISIN {isin}) gefunden. "
-            "Bitte WKN prüfen (funktioniert nur für in Deutschland notierte Wertpapiere)."
-        )
+    for exch_code, yahoo_suffix in GERMAN_EXCHANGES:
+        candidate = candidates.get(exch_code)
+        ticker = candidate.get("ticker") if candidate else None
+        if not ticker:
+            continue
 
-    best = quotes[0]
-    symbol = best.get("symbol")
-    name = best.get("longname") or best.get("shortname") or symbol
-    name = " ".join(name.split())  # Yahoo liefert shortname teils mit Füll-Leerzeichen/Artefakten
-    return {"wkn": wkn, "isin": isin, "symbol": symbol, "name": name}
+        symbol = ticker.replace("/", "-") + "." + yahoo_suffix
+        try:
+            price = yf.Ticker(symbol).fast_info.get("lastPrice")
+        except Exception:
+            price = None
+        if price is not None:
+            name = _fetch_name(symbol, candidate.get("name") or symbol)
+            return {"wkn": wkn, "symbol": symbol, "name": name}
+
+    raise ResolveError(
+        f"Keine handelbaren Kursdaten zur WKN {wkn} an einem deutschen Handelsplatz gefunden. "
+        "Bitte WKN prüfen."
+    )

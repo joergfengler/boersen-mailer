@@ -5,9 +5,11 @@ Watchlist. Zwei Teile:
 
 1. **Lokale Web-UI** (`app.py`) zum Pflegen der Watchlist (`watchlist.json`) — läuft nur auf
    deinem PC. Wertpapiere werden über die **WKN** eingegeben und in zwei Blöcke unterteilt:
-   "Wertpapiere im Bestand" und "Watchlist". Die WKN wird automatisch in eine ISIN
-   umgerechnet und darüber bei Yahoo Finance zu Ticker-Symbol und Name aufgelöst
-   (funktioniert nur für in Deutschland notierte Wertpapiere).
+   "Wertpapiere im Bestand" und "Watchlist". Die WKN wird über die freie OpenFIGI-API zu
+   allen Handelsplätzen aufgelöst und daraus das an einem deutschen Handelsplatz (bevorzugt
+   Xetra) gehandelte Yahoo-Finance-Symbol samt Name ermittelt. Das funktioniert für alle an
+   deutschen Börsen gehandelten Wertpapiere — auch für ausländische Aktien/ETFs mit
+   deutscher WKN, die keine deutsche ISIN haben (z. B. US-Werte).
 2. **`send_report.py`** — holt Kurse/News per `yfinance` und verschickt die Mail per SMTP.
    Dieses Skript soll täglich an Börsentagen automatisch laufen, ausgeführt von einem
    Claude Scheduled Cloud Agent.
