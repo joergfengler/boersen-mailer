@@ -105,8 +105,11 @@
 
   <p class="hint">
     &Auml;nderungen werden sofort in <code>watchlist.json</code> gespeichert.
-    Damit der t&auml;gliche Cloud-Versand die aktuelle Liste sieht, musst du die Datei
-    anschlie&szlig;end committen und pushen (<code>git add watchlist.json &amp;&amp; git commit -m "Watchlist aktualisiert" &amp;&amp; git push</code>).
+    Damit der t&auml;gliche Cloud-Versand die aktuelle Liste sieht, muss sie anschlie&szlig;end
+    auf GitHub gepusht werden.
   </p>
+  <form method="post" action="{{ url_for('sync') }}">
+    <button type="submit">Watchlist committen &amp; pushen</button>
+  </form>
 </body>
 </html>

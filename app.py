@@ -4,6 +4,8 @@ Start: python app.py  ->  http://localhost:5000
 """
 import json
 import os
+import subprocess
+from datetime import datetime
 
 from flask import Flask, flash, redirect, render_template, request, url_for
 
@@ -11,7 +13,8 @@ from securities import ResolveError, resolve_wkn
 
 app = Flask(__name__)
 app.secret_key = "boersen-mailer-local-dev"  # nur lokal genutzt, kein Internetzugriff
-WATCHLIST_PATH = os.path.join(os.path.dirname(__file__), "watchlist.json")
+BASE_DIR = os.path.dirname(__file__)
+WATCHLIST_PATH = os.path.join(BASE_DIR, "watchlist.json")
 
 CATEGORIES = ("bestand", "watchlist")
 
@@ -85,6 +88,36 @@ def edit(wkn):
 def delete(wkn):
     items = [i for i in load_watchlist() if i["wkn"] != wkn]
     save_watchlist(items)
+    return redirect(url_for("index"))
+
+
+def run_git(*args):
+    return subprocess.run(
+        ["git", *args], cwd=BASE_DIR, capture_output=True, text=True, timeout=30
+    )
+
+
+@app.route("/sync", methods=["POST"])
+def sync():
+    add_result = run_git("add", "watchlist.json")
+    if add_result.returncode != 0:
+        flash(f"git add fehlgeschlagen: {add_result.stderr.strip()}")
+        return redirect(url_for("index"))
+
+    diff_result = run_git("diff", "--cached", "--quiet")
+    if diff_result.returncode != 0:
+        commit_msg = f"Watchlist aktualisiert ({datetime.now().strftime('%d.%m.%Y %H:%M')})"
+        commit_result = run_git("commit", "-m", commit_msg)
+        if commit_result.returncode != 0:
+            flash(f"git commit fehlgeschlagen: {commit_result.stderr.strip()}")
+            return redirect(url_for("index"))
+
+    push_result = run_git("push")
+    if push_result.returncode != 0:
+        flash(f"git push fehlgeschlagen: {push_result.stderr.strip()}")
+        return redirect(url_for("index"))
+
+    flash("Watchlist committet und gepusht.")
     return redirect(url_for("index"))
 
 

@@ -88,13 +88,9 @@ https://claude.ai/code (Environments) hinterlegt werden — **nicht** im Repo.
 
 ## 6. Watchlist pflegen
 
-Nach jeder Änderung über die lokale UI:
-
-```bash
-git add watchlist.json
-git commit -m "Watchlist aktualisiert"
-git push
-```
+Nach jeder Änderung über die lokale UI unten auf "Watchlist committen & pushen" klicken —
+das führt `git add`/`commit`/`push` für `watchlist.json` automatisch aus (setzt einen
+funktionierenden `git push` mit hinterlegten Zugangsdaten voraus, siehe Schritt 4).
 
 Der nächste Lauf des Cloud Agents zieht dann automatisch den aktuellen Stand.
 
