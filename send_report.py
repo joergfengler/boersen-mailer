@@ -1,11 +1,11 @@
-"""Holt Kurse + News fuer die Watchlist und verschickt einen taeglichen Boersenbericht per Mail.
+"""Holt Kurse + News fuer die Watchlist und verschickt einen Boersenbericht per Mail.
 
-Wird ueber einen Claude Scheduled Cloud Agent an Boersentagen ausgefuehrt.
+Wird lokal ausgefuehrt (z.B. ueber den "Watchlist committen & pushen"-Button der Web-UI).
 
 Benoetigte Umgebungsvariablen:
   SMTP_HOST   (Default: smtp-mail.outlook.com)
   SMTP_PORT   (Default: 587)
-  SMTP_USER   Absender-Login (z.B. joerg_fengler@hotmail.com)
+  SMTP_USER   Absender-Login (z.B. deine_adresse@gmail.com)
   SMTP_PASS   App-Passwort fuer das Konto
   MAIL_TO     Empfaengeradresse (Default: SMTP_USER)
 """
