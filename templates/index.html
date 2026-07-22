@@ -4,50 +4,102 @@
   <meta charset="utf-8">
   <title>Watchlist verwalten</title>
   <style>
-    body { font-family: system-ui, sans-serif; max-width: 720px; margin: 2rem auto; padding: 0 1rem; color: #1a1a1a; }
+    body { font-family: system-ui, sans-serif; max-width: 780px; margin: 2rem auto; padding: 0 1rem; color: #1a1a1a; }
     h1 { font-size: 1.4rem; }
-    table { width: 100%; border-collapse: collapse; margin-top: 1rem; }
+    h2 { font-size: 1.1rem; margin-top: 2rem; border-bottom: 2px solid #333; padding-bottom: 0.3rem; }
+    table { width: 100%; border-collapse: collapse; margin-top: 0.5rem; }
     th, td { text-align: left; padding: 0.5rem; border-bottom: 1px solid #ddd; }
     input[type=text] { padding: 0.4rem; border: 1px solid #ccc; border-radius: 4px; }
+    select { padding: 0.4rem; border: 1px solid #ccc; border-radius: 4px; }
     button { padding: 0.4rem 0.8rem; border: 1px solid #ccc; border-radius: 4px; background: #f5f5f5; cursor: pointer; }
     button.danger { background: #fde8e8; border-color: #f3b0b0; }
     form.inline { display: inline; }
-    .add-form { display: flex; gap: 0.5rem; margin-top: 1.5rem; align-items: center; }
+    .row-form { display: flex; gap: 0.5rem; align-items: center; }
+    .add-form { display: flex; gap: 0.5rem; margin-top: 1.5rem; align-items: center; flex-wrap: wrap; }
     .hint { color: #666; font-size: 0.85rem; margin-top: 0.5rem; }
+    .flash { background: #fff3cd; border: 1px solid #ffe69c; padding: 0.6rem 1rem; border-radius: 4px; margin-top: 1rem; }
+    .meta { color: #888; font-size: 0.8em; }
   </style>
 </head>
 <body>
   <h1>Watchlist f&uuml;r den t&auml;glichen B&ouml;rsenbericht</h1>
-  <p class="hint">Symbol = Yahoo-Finance-Ticker, z.&nbsp;B. <code>SAP.DE</code>, <code>VOW3.DE</code>, <code>AAPL</code>, <code>MSFT</code>.</p>
+  <p class="hint">Eingabe erfolgt &uuml;ber die WKN (Wertpapierkennnummer), z.&nbsp;B. <code>716460</code> (SAP SE). Funktioniert nur f&uuml;r in Deutschland notierte Wertpapiere.</p>
 
+  {% with messages = get_flashed_messages() %}
+    {% if messages %}
+      {% for m in messages %}<div class="flash">{{ m }}</div>{% endfor %}
+    {% endif %}
+  {% endwith %}
+
+  <h2>Wertpapiere im Bestand</h2>
   <table>
-    <thead><tr><th>Symbol</th><th>Name (optional)</th><th></th></tr></thead>
+    <thead><tr><th>WKN</th><th>Name</th><th>Kategorie</th><th></th></tr></thead>
     <tbody>
-      {% for item in items %}
+      {% for item in bestand %}
       <tr>
-        <td>{{ item.symbol }}</td>
+        <td>{{ item.wkn }}<br><span class="meta">{{ item.symbol }}</span></td>
         <td>
-          <form class="inline" method="post" action="{{ url_for('edit', symbol=item.symbol) }}">
+          <form class="row-form" method="post" action="{{ url_for('edit', wkn=item.wkn) }}">
             <input type="text" name="name" value="{{ item.name }}">
+            <select name="category">
+              <option value="bestand" selected>Bestand</option>
+              <option value="watchlist">Watchlist</option>
+            </select>
             <button type="submit">Speichern</button>
           </form>
         </td>
+        <td></td>
         <td>
-          <form class="inline" method="post" action="{{ url_for('delete', symbol=item.symbol) }}"
-                onsubmit="return confirm('{{ item.symbol }} wirklich löschen?');">
+          <form class="inline" method="post" action="{{ url_for('delete', wkn=item.wkn) }}"
+                onsubmit="return confirm('{{ item.wkn }} wirklich löschen?');">
             <button type="submit" class="danger">L&ouml;schen</button>
           </form>
         </td>
       </tr>
       {% else %}
-      <tr><td colspan="3">Noch keine Wertpapiere hinterlegt.</td></tr>
+      <tr><td colspan="4">Noch keine Wertpapiere im Bestand.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+  <h2>Watchlist</h2>
+  <table>
+    <thead><tr><th>WKN</th><th>Name</th><th>Kategorie</th><th></th></tr></thead>
+    <tbody>
+      {% for item in watchlist %}
+      <tr>
+        <td>{{ item.wkn }}<br><span class="meta">{{ item.symbol }}</span></td>
+        <td>
+          <form class="row-form" method="post" action="{{ url_for('edit', wkn=item.wkn) }}">
+            <input type="text" name="name" value="{{ item.name }}">
+            <select name="category">
+              <option value="bestand">Bestand</option>
+              <option value="watchlist" selected>Watchlist</option>
+            </select>
+            <button type="submit">Speichern</button>
+          </form>
+        </td>
+        <td></td>
+        <td>
+          <form class="inline" method="post" action="{{ url_for('delete', wkn=item.wkn) }}"
+                onsubmit="return confirm('{{ item.wkn }} wirklich löschen?');">
+            <button type="submit" class="danger">L&ouml;schen</button>
+          </form>
+        </td>
+      </tr>
+      {% else %}
+      <tr><td colspan="4">Noch keine Eintr&auml;ge in der Watchlist.</td></tr>
       {% endfor %}
     </tbody>
   </table>
 
   <form class="add-form" method="post" action="{{ url_for('add') }}">
-    <input type="text" name="symbol" placeholder="Symbol, z.B. SAP.DE" required>
-    <input type="text" name="name" placeholder="Name (optional)">
+    <input type="text" name="wkn" placeholder="WKN, z.B. 716460" required>
+    <input type="text" name="name" placeholder="Name (optional, sonst automatisch)">
+    <select name="category">
+      <option value="bestand">Bestand</option>
+      <option value="watchlist" selected>Watchlist</option>
+    </select>
     <button type="submit">Hinzuf&uuml;gen</button>
   </form>
 

@@ -65,43 +65,56 @@ def fetch_symbol_data(symbol):
     return {"price": price, "change": change, "change_pct": change_pct, "headlines": headlines}
 
 
-def build_email_html(watchlist, results):
-    today = datetime.now().strftime("%d.%m.%Y")
+def build_section_rows(items, results):
     rows = []
-    for item in watchlist:
+    for item in items:
         symbol = item["symbol"]
         name = item.get("name") or symbol
+        wkn = item.get("wkn", "")
         data = results[symbol]
         if data["price"] is None:
-            rows.append(f"<tr><td>{name} ({symbol})</td><td colspan='2'>Keine Kursdaten verfuegbar</td></tr>")
+            rows.append(f"<tr><td>{name} ({wkn})</td><td colspan='2'>Keine Kursdaten verfuegbar</td></tr>")
             continue
 
         color = "#1a7f37" if (data["change"] or 0) >= 0 else "#c0392b"
         sign = "+" if (data["change"] or 0) >= 0 else ""
         rows.append(
-            f"<tr><td>{name} ({symbol})</td>"
+            f"<tr><td>{name} ({wkn})</td>"
             f"<td>{data['price']:.2f}</td>"
             f"<td style='color:{color}'>{sign}{data['change']:.2f} ({sign}{data['change_pct']:.2f}%)</td></tr>"
         )
         for h in data["headlines"]:
             link_html = f"<a href='{h['link']}'>{h['title']}</a>" if h.get("link") else h["title"]
             rows.append(f"<tr><td colspan='3' style='padding-left:1.5em;color:#555;font-size:0.9em'>&bull; {link_html}</td></tr>")
+    return "\n".join(rows) if rows else "<tr><td colspan='3'>Keine Eintraege.</td></tr>"
 
-    table_rows = "\n".join(rows) if rows else "<tr><td>Watchlist ist leer.</td></tr>"
+
+def build_section_table(title, items, results):
+    return f"""
+      <h3>{title}</h3>
+      <table cellspacing="0" cellpadding="6" style="border-collapse:collapse;width:100%">
+        <thead>
+          <tr style="border-bottom:2px solid #333;text-align:left">
+            <th>Wertpapier (WKN)</th><th>Kurs</th><th>Veraenderung</th>
+          </tr>
+        </thead>
+        <tbody>
+          {build_section_rows(items, results)}
+        </tbody>
+      </table>
+    """
+
+
+def build_email_html(watchlist, results):
+    today = datetime.now().strftime("%d.%m.%Y")
+    bestand = [i for i in watchlist if i.get("category") == "bestand"]
+    beobachtung = [i for i in watchlist if i.get("category") != "bestand"]
 
     return f"""
     <html><body style="font-family:sans-serif">
       <h2>Boersenbericht vom {today}</h2>
-      <table cellspacing="0" cellpadding="6" style="border-collapse:collapse;width:100%">
-        <thead>
-          <tr style="border-bottom:2px solid #333;text-align:left">
-            <th>Wertpapier</th><th>Kurs</th><th>Veraenderung</th>
-          </tr>
-        </thead>
-        <tbody>
-          {table_rows}
-        </tbody>
-      </table>
+      {build_section_table("Wertpapiere im Bestand", bestand, results)}
+      {build_section_table("Watchlist", beobachtung, results)}
       <p style="color:#888;font-size:0.8em;margin-top:2em">Automatisch erstellt.</p>
     </body></html>
     """

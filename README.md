@@ -4,7 +4,10 @@ Tägliche E-Mail mit Kurs, Tagesveränderung und News-Schlagzeilen zu einer selb
 Watchlist. Zwei Teile:
 
 1. **Lokale Web-UI** (`app.py`) zum Pflegen der Watchlist (`watchlist.json`) — läuft nur auf
-   deinem PC.
+   deinem PC. Wertpapiere werden über die **WKN** eingegeben und in zwei Blöcke unterteilt:
+   "Wertpapiere im Bestand" und "Watchlist". Die WKN wird automatisch in eine ISIN
+   umgerechnet und darüber bei Yahoo Finance zu Ticker-Symbol und Name aufgelöst
+   (funktioniert nur für in Deutschland notierte Wertpapiere).
 2. **`send_report.py`** — holt Kurse/News per `yfinance` und verschickt die Mail per SMTP.
    Dieses Skript soll täglich an Börsentagen automatisch laufen, ausgeführt von einem
    Claude Scheduled Cloud Agent.
@@ -25,7 +28,9 @@ python app.py
 ```
 
 → http://localhost:5000 öffnen, Wertpapiere hinzufügen/ändern/löschen.
-Als "Symbol" den **Yahoo-Finance-Ticker** eintragen, z. B. `SAP.DE`, `VOW3.DE`, `AAPL`, `MSFT`.
+Als "WKN" die 6-stellige Wertpapierkennnummer eintragen, z. B. `716460` (SAP SE),
+`840400` (Allianz SE). Kategorie "Bestand" oder "Watchlist" wählen — Name und
+Ticker-Symbol werden automatisch ermittelt.
 
 ## 2. Outlook-App-Passwort erstellen
 
