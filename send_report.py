@@ -13,7 +13,7 @@ import json
 import os
 import smtplib
 import socket
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 
@@ -38,6 +38,7 @@ BASE_DIR = os.path.dirname(__file__)
 WATCHLIST_PATH = os.path.join(BASE_DIR, "watchlist.json")
 
 MAX_NEWS_PER_SYMBOL = 3
+MAX_NEWS_AGE_DAYS = 21
 
 
 def load_watchlist():
@@ -48,7 +49,7 @@ def load_watchlist():
 def fetch_symbol_data(symbol):
     ticker = yf.Ticker(symbol)
 
-    price = change = change_pct = None
+    price = change = change_pct = year_high = year_low = None
     try:
         fi = ticker.fast_info
         price = fi.get("lastPrice") or fi.get("last_price")
@@ -56,6 +57,8 @@ def fetch_symbol_data(symbol):
         if price is not None and prev_close:
             change = price - prev_close
             change_pct = (change / prev_close) * 100
+        year_high = fi.get("yearHigh")
+        year_low = fi.get("yearLow")
     except Exception:
         pass
 
@@ -70,18 +73,36 @@ def fetch_symbol_data(symbol):
         except Exception:
             pass
 
+    cutoff = datetime.now(timezone.utc) - timedelta(days=MAX_NEWS_AGE_DAYS)
     headlines = []
     try:
-        for item in (ticker.news or [])[:MAX_NEWS_PER_SYMBOL]:
+        for item in ticker.news or []:
             content = item.get("content", item)
+            pub_date_raw = content.get("pubDate") or item.get("pubDate")
+            try:
+                pub_date = datetime.fromisoformat(pub_date_raw.replace("Z", "+00:00"))
+            except (TypeError, ValueError):
+                continue
+            if pub_date < cutoff:
+                continue
+
             title = content.get("title") or item.get("title")
             link = (content.get("canonicalUrl") or {}).get("url") or item.get("link")
             if title:
                 headlines.append({"title": title, "link": link})
+            if len(headlines) >= MAX_NEWS_PER_SYMBOL:
+                break
     except Exception:
         pass
 
-    return {"price": price, "change": change, "change_pct": change_pct, "headlines": headlines}
+    return {
+        "price": price,
+        "change": change,
+        "change_pct": change_pct,
+        "year_high": year_high,
+        "year_low": year_low,
+        "headlines": headlines,
+    }
 
 
 def build_section_rows(items, results):
@@ -92,20 +113,24 @@ def build_section_rows(items, results):
         wkn = item.get("wkn", "")
         data = results[symbol]
         if data["price"] is None:
-            rows.append(f"<tr><td>{name} ({wkn})</td><td colspan='2'>Keine Kursdaten verfuegbar</td></tr>")
+            rows.append(f"<tr><td>{name} ({wkn})</td><td colspan='4'>Keine Kursdaten verfuegbar</td></tr>")
             continue
 
         color = "#1a7f37" if (data["change"] or 0) >= 0 else "#c0392b"
         sign = "+" if (data["change"] or 0) >= 0 else ""
+        year_high = f"{data['year_high']:.2f}" if data.get("year_high") is not None else "-"
+        year_low = f"{data['year_low']:.2f}" if data.get("year_low") is not None else "-"
         rows.append(
             f"<tr><td>{name} ({wkn})</td>"
             f"<td>{data['price']:.2f}</td>"
-            f"<td style='color:{color}'>{sign}{data['change']:.2f} ({sign}{data['change_pct']:.2f}%)</td></tr>"
+            f"<td style='color:{color}'>{sign}{data['change']:.2f} ({sign}{data['change_pct']:.2f}%)</td>"
+            f"<td>{year_high}</td>"
+            f"<td>{year_low}</td></tr>"
         )
         for h in data["headlines"]:
             link_html = f"<a href='{h['link']}'>{h['title']}</a>" if h.get("link") else h["title"]
-            rows.append(f"<tr><td colspan='3' style='padding-left:1.5em;color:#555;font-size:0.9em'>&bull; {link_html}</td></tr>")
-    return "\n".join(rows) if rows else "<tr><td colspan='3'>Keine Eintraege.</td></tr>"
+            rows.append(f"<tr><td colspan='5' style='padding-left:1.5em;color:#555;font-size:0.9em'>&bull; {link_html}</td></tr>")
+    return "\n".join(rows) if rows else "<tr><td colspan='5'>Keine Eintraege.</td></tr>"
 
 
 def build_section_table(title, items, results):
@@ -114,7 +139,7 @@ def build_section_table(title, items, results):
       <table cellspacing="0" cellpadding="6" style="border-collapse:collapse;width:100%">
         <thead>
           <tr style="border-bottom:2px solid #333;text-align:left">
-            <th>Wertpapier (WKN)</th><th>Kurs</th><th>Veraenderung</th>
+            <th>Wertpapier (WKN)</th><th>Kurs</th><th>Veraenderung</th><th>52W Hoch</th><th>52W Tief</th>
           </tr>
         </thead>
         <tbody>
