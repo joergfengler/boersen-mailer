@@ -47,12 +47,15 @@ def fetch_symbol_data(symbol):
         pass
 
     if price is None:
-        hist = ticker.history(period="5d")
-        if len(hist) >= 2:
-            price = float(hist["Close"].iloc[-1])
-            prev_close = float(hist["Close"].iloc[-2])
-            change = price - prev_close
-            change_pct = (change / prev_close) * 100
+        try:
+            hist = ticker.history(period="5d")
+            if len(hist) >= 2:
+                price = float(hist["Close"].iloc[-1])
+                prev_close = float(hist["Close"].iloc[-2])
+                change = price - prev_close
+                change_pct = (change / prev_close) * 100
+        except Exception:
+            pass
 
     headlines = []
     try:
