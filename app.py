@@ -9,6 +9,7 @@ from datetime import datetime
 
 from flask import Flask, flash, redirect, render_template, request, url_for
 
+import send_report
 from securities import ResolveError, resolve_wkn
 
 app = Flask(__name__)
@@ -116,7 +117,22 @@ def sync():
         flash(f"git push fehlgeschlagen: {push_result.stderr.strip()}")
         return redirect(url_for("index"))
 
-    flash("Watchlist committet und gepusht.")
+    try:
+        sent = send_report.main(subject_prefix="Watchlist-Update")
+    except KeyError:
+        flash(
+            "Watchlist committet und gepusht, aber kein Mailversand: SMTP_USER/SMTP_PASS "
+            "sind lokal nicht gesetzt (siehe README, Abschnitt 3, .env anlegen)."
+        )
+        return redirect(url_for("index"))
+    except Exception as e:
+        flash(f"Watchlist committet und gepusht, aber Mailversand fehlgeschlagen: {e}")
+        return redirect(url_for("index"))
+
+    if sent:
+        flash("Watchlist committet, gepusht und Bericht per Mail versendet.")
+    else:
+        flash("Watchlist committet und gepusht (kein Mailversand, Watchlist ist leer).")
     return redirect(url_for("index"))
 
 

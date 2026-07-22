@@ -17,6 +17,9 @@ from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 
 import yfinance as yf
+from dotenv import load_dotenv
+
+load_dotenv()
 
 BASE_DIR = os.path.dirname(__file__)
 WATCHLIST_PATH = os.path.join(BASE_DIR, "watchlist.json")
@@ -139,17 +142,20 @@ def send_email(html_body, subject):
         server.sendmail(smtp_user, [mail_to], msg.as_string())
 
 
-def main():
+def main(subject_prefix="Boersenbericht"):
+    """Holt Daten und verschickt den Bericht. Gibt True zurueck, wenn eine Mail
+    versendet wurde, False bei leerer Watchlist."""
     watchlist = load_watchlist()
     if not watchlist:
         print("Watchlist ist leer, kein Versand.")
-        return
+        return False
 
     results = {item["symbol"]: fetch_symbol_data(item["symbol"]) for item in watchlist}
     html_body = build_email_html(watchlist, results)
-    subject = f"Boersenbericht {datetime.now().strftime('%d.%m.%Y')}"
+    subject = f"{subject_prefix} {datetime.now().strftime('%d.%m.%Y %H:%M')}"
     send_email(html_body, subject)
     print("Bericht versendet.")
+    return True
 
 
 if __name__ == "__main__":

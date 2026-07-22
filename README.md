@@ -11,8 +11,10 @@ Watchlist. Zwei Teile:
    deutschen Börsen gehandelten Wertpapiere — auch für ausländische Aktien/ETFs mit
    deutscher WKN, die keine deutsche ISIN haben (z. B. US-Werte).
 2. **`send_report.py`** — holt Kurse/News per `yfinance` und verschickt die Mail per SMTP.
-   Dieses Skript soll täglich an Börsentagen automatisch laufen, ausgeführt von einem
-   Claude Scheduled Cloud Agent.
+   Wird auf zwei Wegen ausgelöst:
+   - täglich an Börsentagen automatisch durch einen Claude Scheduled Cloud Agent,
+   - zusätzlich sofort bei jedem Klick auf "Watchlist committen & pushen" in der lokalen UI
+     (nutzt dafür die lokal in `.env` hinterlegten SMTP-Zugangsdaten, siehe Schritt 3).
 
 ## 1. Lokal einrichten
 
@@ -92,7 +94,10 @@ https://claude.ai/code (Environments) hinterlegt werden — **nicht** im Repo.
 
 Nach jeder Änderung über die lokale UI unten auf "Watchlist committen & pushen" klicken —
 das führt `git add`/`commit`/`push` für `watchlist.json` automatisch aus (setzt einen
-funktionierenden `git push` mit hinterlegten Zugangsdaten voraus, siehe Schritt 4).
+funktionierenden `git push` mit hinterlegten Zugangsdaten voraus, siehe Schritt 4) und
+verschickt danach sofort einen aktuellen Bericht per Mail (setzt eine lokale `.env` mit
+SMTP-Zugangsdaten voraus, siehe Schritt 3 — ohne `.env` wird trotzdem committet/gepusht,
+nur der Mailversand entfällt mit entsprechendem Hinweis).
 
 Der nächste Lauf des Cloud Agents zieht dann automatisch den aktuellen Stand.
 
