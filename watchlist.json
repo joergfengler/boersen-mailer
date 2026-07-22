@@ -19,5 +19,17 @@
     "symbol": "VNA.DE",
     "name": "Vonovia SE",
     "category": "bestand"
+  },
+  {
+    "wkn": "A0YAQA",
+    "symbol": "CSA.DE",
+    "name": "Accenture plc",
+    "category": "watchlist"
+  },
+  {
+    "wkn": "A2QA4J",
+    "symbol": "PTX.DE",
+    "name": "Palantir Technologies Inc.",
+    "category": "watchlist"
   }
 ]
