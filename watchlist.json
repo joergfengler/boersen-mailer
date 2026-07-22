@@ -1,1 +1,23 @@
-[]
+[
+  {
+    "wkn": "519000",
+    "isin": "DE0005190003",
+    "symbol": "BMW.DE",
+    "name": "Bayerische Motoren Werke Aktiengesellschaft",
+    "category": "bestand"
+  },
+  {
+    "wkn": "531370",
+    "isin": "DE0005313704",
+    "symbol": "AFX.DE",
+    "name": "Carl Zeiss Meditec AG",
+    "category": "bestand"
+  },
+  {
+    "wkn": "A1ML7J",
+    "isin": "DE000A1ML7J1",
+    "symbol": "VNA.DE",
+    "name": "Vonovia SE",
+    "category": "bestand"
+  }
+]
